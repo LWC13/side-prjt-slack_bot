@@ -1,0 +1,11 @@
+services:
+  slack-bot:
+    build: .
+    container_name: slack-agent-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Taipei
+    volumes:
+      - ./data:/app/data
