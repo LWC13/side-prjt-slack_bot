@@ -9,3 +9,5 @@ services:
       - TZ=Asia/Taipei
     volumes:
       - ./data:/app/data
+      - ./app.py:/app/app.py        # 掛載程式碼
+      - ./vision.py:/app/vision.py   # 掛載程式碼

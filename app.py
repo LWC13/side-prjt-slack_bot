@@ -19,6 +19,7 @@ import re
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from openai import OpenAI
+from vision import process_slack_image, GEMINI_API_KEY
 
 # ============================================================
 # 設定
@@ -476,6 +477,37 @@ def chat_with_llm(user_message: str) -> str:
 
 app = App(token=SLACK_BOT_TOKEN)
 
+# 支援的圖片 MIME type
+IMAGE_MIME_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"}
+
+
+def handle_image_files(event, say, user_text: str = ""):
+    """檢查訊息是否包含圖片，有的話用 Gemini 分析。
+
+    Returns:
+        True 如果有處理圖片，False 如果沒有圖片
+    """
+    files = event.get("files", [])
+    image_files = [f for f in files if f.get("mimetype", "") in IMAGE_MIME_TYPES]
+
+    if not image_files:
+        return False
+
+    prompt = user_text if user_text else None
+
+    for f in image_files:
+        file_url = f.get("url_private", "")
+        if not file_url:
+            continue
+        try:
+            text, usage = process_slack_image(file_url, SLACK_BOT_TOKEN, prompt=prompt)
+            say(text)
+        except Exception as e:
+            logger.error(f"圖片分析失敗: {e}")
+            say(f"⚠️ 圖片分析失敗：{str(e)}")
+
+    return True
+
 
 @app.event("app_mention")
 def handle_mention(event, say):
@@ -484,8 +516,12 @@ def handle_mention(event, say):
     # 移除 @bot 的 mention 標記
     text = re.sub(r"<@[A-Z0-9]+>", "", text).strip()
 
+    # 先檢查是否有圖片
+    if handle_image_files(event, say, user_text=text):
+        return
+
     if not text:
-        say("嗨！有什麼我可以幫你的嗎？試試看：\n• `記一下 <內容>` — 新增待辦\n• `待辦` — 列出待辦\n• `提醒我 <時間> <內容>` — 設定提醒")
+        say("嗨！有什麼我可以幫你的嗎？試試看：\n• `記一下 <內容>` — 新增待辦\n• `待辦` — 列出待辦\n• `提醒我 <時間> <內容>` — 設定提醒\n• 上傳圖片 — AI 圖片分析")
         return
 
     # 透過 LLM 處理
@@ -503,13 +539,56 @@ def handle_dm(event, say):
         return
 
     text = event.get("text", "").strip()
+
+    # 先檢查是否有圖片
+    if handle_image_files(event, say, user_text=text):
+        return
+
     if not text:
         return
 
     reply = chat_with_llm(text)
     say(reply)
 
+@app.command("/reimbursement")
+def handle_reimbursement(ack, command, say, client):
+    """處理 /reimbursement 指令 - 報帳分析"""
+    ack("🧾 收到！正在分析報帳圖片...")
 
+    channel_id = command["channel_id"]
+
+    # 取得該 channel 最近的訊息，找圖片
+    try:
+        result = client.conversations_history(channel=channel_id, limit=5)
+        messages = result.get("messages", [])
+
+        image_file = None
+        for msg in messages:
+            files = msg.get("files", [])
+            for f in files:
+                if f.get("mimetype", "") in IMAGE_MIME_TYPES:
+                    image_file = f
+                    break
+            if image_file:
+                break
+
+        if not image_file:
+            say("⚠️ 找不到最近上傳的圖片。請先上傳收據/發票圖片，再輸入 `/reimbursement`")
+            return
+
+        file_url = image_file.get("url_private", "")
+        if not file_url:
+            say("⚠️ 無法取得圖片網址")
+            return
+
+        # 用報帳專用 prompt 分析
+        from vision import EXPENSE_EXTRACT_PROMPT
+        text, usage = process_slack_image(file_url, SLACK_BOT_TOKEN, prompt=EXPENSE_EXTRACT_PROMPT)
+        say(f"🧾 *報帳分析結果*\n```{text}```")
+
+    except Exception as e:
+        logger.error(f"報帳分析失敗: {e}")
+        say(f"⚠️ 報帳分析失敗：{str(e)}")
 # ============================================================
 # 背景排程（提醒 + 每日摘要）
 # ============================================================
