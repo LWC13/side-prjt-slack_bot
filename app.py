@@ -482,6 +482,48 @@ def handle_dm(event, say):
 # 背景排程
 # ============================================================
 
+# 關鍵字 → 圖片對應（提醒內容包含關鍵字就附圖）
+# 圖片放在 images/ 目錄下
+REMINDER_IMAGES = {
+    "喝水": "images/drink_water.png",
+    # 之後可以繼續加，例如：
+    # "運動": "images/exercise.png",
+    # "吃藥": "images/medicine.png",
+}
+
+
+def get_reminder_image(content):
+    """根據提醒內容找對應的圖片路徑"""
+    for keyword, image_path in REMINDER_IMAGES.items():
+        if keyword in content:
+            full_path = os.path.join(os.path.dirname(__file__), image_path)
+            if os.path.exists(full_path):
+                return full_path
+    return None
+
+
+def send_reminder(slack_app, content):
+    """發送提醒，如果有對應圖片就一起發送"""
+    if not MY_SLACK_USER_ID:
+        return
+
+    image_path = get_reminder_image(content)
+
+    if image_path:
+        # 有圖片：用 files_upload_v2 上傳圖片並附訊息
+        slack_app.client.files_upload_v2(
+            channel=MY_SLACK_USER_ID,
+            file=image_path,
+            initial_comment=f"⏰ *提醒*：{content}",
+        )
+    else:
+        # 沒圖片：純文字
+        slack_app.client.chat_postMessage(
+            channel=MY_SLACK_USER_ID,
+            text=f"⏰ *提醒*：{content}",
+        )
+
+
 def background_scheduler(slack_app):
     logger.info("背景排程已啟動")
     last_summary_date = None
@@ -493,7 +535,7 @@ def background_scheduler(slack_app):
             for rid, content in check_reminders():
                 if MY_SLACK_USER_ID:
                     try:
-                        slack_app.client.chat_postMessage(channel=MY_SLACK_USER_ID, text=f"⏰ *提醒*：{content}")
+                        send_reminder(slack_app, content)
                         logger.info(f"已發送提醒 #{rid}")
                     except Exception as e:
                         logger.error(f"發送提醒失敗: {e}")
