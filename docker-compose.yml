@@ -9,6 +9,13 @@ services:
       - TZ=Asia/Taipei
     volumes:
       - ./data:/app/data
-      - ./app.py:/app/app.py        # 掛載程式碼
-      - ./vision.py:/app/vision.py   # 掛載程式碼
       - ./images:/app/images
+      # 開發用：掛載程式碼，改完 restart 就生效
+      - ./app.py:/app/app.py
+      - ./config.py:/app/config.py
+      - ./db.py:/app/db.py
+      - ./llm.py:/app/llm.py
+      - ./commands.py:/app/commands.py
+      - ./scheduler.py:/app/scheduler.py
+      - ./notion.py:/app/notion.py
+      - ./vision.py:/app/vision.py

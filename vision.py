@@ -10,7 +10,7 @@ from google.genai import types
 import sys
 from pathlib import Path
 
-DEFAULT_MODEL = "gemini-2.0-flash"
+DEFAULT_MODEL = "gemini-3-pro-preview"
 DEFAULT_PROMPT = "請描述這張圖片的內容，用繁體中文回答。"
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
