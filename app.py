@@ -15,6 +15,7 @@ from llm import chat_with_llm
 from commands import COMMANDS
 from scheduler import background_scheduler
 from vision import process_slack_image
+from survey import init_survey_db, record_response, check_all_responded, complete_survey, format_survey_result
 
 # ============================================================
 # Slack App
@@ -62,7 +63,7 @@ def process_message(event, say):
         cmd_name = parts[0].lower()
         args = parts[1] if len(parts) > 1 else ""
         if cmd_name in COMMANDS:
-            COMMANDS[cmd_name]["handler"](event, say, args, handle_image_files=handle_image_files)
+            COMMANDS[cmd_name]["handler"](event, say, args, handle_image_files=handle_image_files, slack_app=app)
         else:
             say(f"⚠️ 不認識的指令 `{cmd_name}`，打 `/help` 看可用指令")
         return
@@ -91,6 +92,33 @@ def handle_dm(event, say):
         return
     if event.get("bot_id"):
         return
+
+    user_id = event.get("user", "")
+    text = event.get("text", "").strip()
+
+    # 先檢查是不是調查的回覆
+    if text and user_id:
+        survey_id, title = record_response(user_id, text)
+        if survey_id:
+            say(f"收到你的回覆了，謝啦 👍")
+            logger.info(f"調查 #{survey_id} 收到 {user_id} 的回覆")
+
+            # 檢查是否所有人都回覆了
+            if check_all_responded(survey_id):
+                complete_survey(survey_id)
+                result = format_survey_result(survey_id)
+                # 通知發起人
+                from config import MY_SLACK_USER_ID
+                if MY_SLACK_USER_ID:
+                    try:
+                        app.client.chat_postMessage(
+                            channel=MY_SLACK_USER_ID,
+                            text=f"🎉 所有人都回覆了！\n\n{result}",
+                        )
+                    except Exception as e:
+                        logger.error(f"通知發起人失敗: {e}")
+            return
+
     process_message(event, say)
 
 
@@ -100,6 +128,7 @@ def handle_dm(event, say):
 
 def main():
     init_db()
+    init_survey_db()
     logger.info("資料庫初始化完成")
     logger.info(f"已註冊 {len(COMMANDS)} 個指令：{', '.join(COMMANDS.keys())}")
     Thread(target=background_scheduler, args=(app,), daemon=True).start()

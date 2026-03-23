@@ -140,6 +140,20 @@ def background_scheduler(slack_app):
                 except Exception as e:
                     logger.error(f"發送下班前提醒失敗: {e}")
 
+            # 檢查到期的調查
+            try:
+                from survey import check_expired_surveys, format_survey_result
+                for sid in check_expired_surveys():
+                    if MY_SLACK_USER_ID:
+                        result = format_survey_result(sid)
+                        slack_app.client.chat_postMessage(
+                            channel=MY_SLACK_USER_ID,
+                            text=f"⏰ 調查截止了！\n\n{result}",
+                        )
+                        logger.info(f"調查 #{sid} 已截止，已發送彙整")
+            except Exception as e:
+                logger.error(f"檢查調查失敗: {e}")
+
         except Exception as e:
             logger.error(f"排程錯誤: {e}")
 

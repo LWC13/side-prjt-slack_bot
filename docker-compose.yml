@@ -19,3 +19,4 @@ services:
       - ./scheduler.py:/app/scheduler.py
       - ./notion.py:/app/notion.py
       - ./vision.py:/app/vision.py
+      - ./survey.py:/app/survey.py
