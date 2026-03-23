@@ -11,7 +11,7 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 from config import SLACK_BOT_TOKEN, SLACK_APP_TOKEN, IMAGE_MIME_TYPES, logger
 from db import init_db
-from llm import chat_with_llm
+from llm import chat_with_llm, set_slack_app
 from commands import COMMANDS
 from scheduler import background_scheduler
 from vision import process_slack_image
@@ -22,6 +22,7 @@ from survey import init_survey_db, record_response, check_all_responded, complet
 # ============================================================
 
 app = App(token=SLACK_BOT_TOKEN)
+set_slack_app(app)
 
 
 # ============================================================
@@ -55,7 +56,22 @@ def handle_image_files(event, say, user_text=""):
 def process_message(event, say):
     """統一處理訊息的核心邏輯（@mention 和 DM 共用）"""
     text = event.get("text", "")
-    text = re.sub(r"<@[A-Z0-9]+>", "", text).strip()
+
+    # 只移除 Bot 自己的 @mention，保留其他人的（給 create_survey 用）
+    bot_user_id = getattr(app, '_bot_user_id', None)
+    if not bot_user_id:
+        try:
+            auth = app.client.auth_test()
+            bot_user_id = auth["user_id"]
+            app._bot_user_id = bot_user_id
+        except Exception:
+            bot_user_id = None
+
+    if bot_user_id:
+        text = text.replace(f"<@{bot_user_id}>", "").strip()
+    else:
+        # fallback: 移除第一個 mention（通常是 Bot）
+        text = re.sub(r"<@[A-Z0-9]+>", "", text, count=1).strip()
 
     # 1. /command 指令
     if text.startswith("/"):

@@ -33,3 +33,5 @@ REMINDER_IMAGES = {
     # "運動": "images/exercise.png",
     # "吃藥": "images/medicine.png",
 }
+MAX_REQUESTS_PER_HOUR = int(os.environ.get("MAX_REQUESTS_PER_HOUR", "60"))
+MAX_MESSAGE_LENGTH = 3000
