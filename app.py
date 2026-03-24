@@ -15,8 +15,7 @@ from llm import chat_with_llm, set_slack_app
 from commands import COMMANDS
 from scheduler import background_scheduler
 from vision import process_slack_image
-from survey import init_survey_db, record_response, check_all_responded, complete_survey, format_survey_result
-
+from survey import init_survey_db, record_response, check_all_responded, complete_survey, format_survey_result, get_survey_creator
 # ============================================================
 # Slack App
 # ============================================================
@@ -94,7 +93,7 @@ def process_message(event, say):
         return
 
     # 4. 一般文字 → LLM 對話
-    say(chat_with_llm(text))
+    say(chat_with_llm(text, user_id=event.get("user")))
 
 
 @app.event("app_mention")
@@ -123,12 +122,12 @@ def handle_dm(event, say):
             if check_all_responded(survey_id):
                 complete_survey(survey_id)
                 result = format_survey_result(survey_id)
-                # 通知發起人
-                from config import MY_SLACK_USER_ID
-                if MY_SLACK_USER_ID:
+                # 通知發起人（不一定是你）
+                created_by = get_survey_creator(survey_id)
+                if created_by:
                     try:
                         app.client.chat_postMessage(
-                            channel=MY_SLACK_USER_ID,
+                            channel=created_by,
                             text=f"🎉 所有人都回覆了！\n\n{result}",
                         )
                     except Exception as e:

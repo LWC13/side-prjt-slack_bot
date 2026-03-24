@@ -240,3 +240,12 @@ def list_active_surveys():
     for sid, title, deadline in rows:
         lines.append(f"• `#{sid}` {title} — 截止 {deadline}")
     return "\n".join(lines)
+
+def get_survey_creator(survey_id):
+    """取得調查的發起人 User ID"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT created_by FROM surveys WHERE id = ?", (survey_id,))
+    row = c.fetchone()
+    conn.close()
+    return row[0] if row else None

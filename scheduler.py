@@ -100,9 +100,11 @@ def generate_eod_reminder():
     lines.append("\n做完了跟我說 `完成 #編號`，或明天再處理也沒關係 💪")
     return "\n".join(lines)
 
+def is_workday():
+    """判斷今天是不是工作日（週一到週五）"""
+    return datetime.now().weekday() < 5  # 0=週一, 4=週五, 5=週六, 6=週日
 
 def background_scheduler(slack_app):
-    """背景排程主迴圈"""
     logger.info("背景排程已啟動")
     last_summary_date = None
     last_eod_check_date = None
@@ -110,8 +112,7 @@ def background_scheduler(slack_app):
     while True:
         try:
             now = datetime.now()
-
-            # 檢查提醒
+            # 檢查提醒（只有工作日才發重複提醒，一次性提醒照常發）
             for rid, content in check_reminders():
                 if MY_SLACK_USER_ID:
                     try:
@@ -120,8 +121,8 @@ def background_scheduler(slack_app):
                     except Exception as e:
                         logger.error(f"發送提醒失敗: {e}")
 
-            # 每日摘要（早上）
-            if now.hour == DAILY_SUMMARY_HOUR and now.minute < 1 and last_summary_date != now.date() and MY_SLACK_USER_ID:
+            # 每日摘要（只有工作日）
+            if is_workday() and now.hour == DAILY_SUMMARY_HOUR and now.minute < 1 and last_summary_date != now.date() and MY_SLACK_USER_ID:
                 try:
                     slack_app.client.chat_postMessage(channel=MY_SLACK_USER_ID, text=generate_daily_summary())
                     last_summary_date = now.date()
@@ -129,8 +130,8 @@ def background_scheduler(slack_app):
                 except Exception as e:
                     logger.error(f"發送每日摘要失敗: {e}")
 
-            # 下班前待辦提醒（17:30）
-            if now.hour == 17 and 30 <= now.minute < 31 and last_eod_check_date != now.date() and MY_SLACK_USER_ID:
+            # 下班前待辦提醒（只有工作日）
+            if is_workday() and now.hour == 17 and 30 <= now.minute < 31 and last_eod_check_date != now.date() and MY_SLACK_USER_ID:
                 try:
                     eod_msg = generate_eod_reminder()
                     if eod_msg:
@@ -140,16 +141,18 @@ def background_scheduler(slack_app):
                 except Exception as e:
                     logger.error(f"發送下班前提醒失敗: {e}")
 
-            # 檢查到期的調查
+            # 檢查到期的調查（這個不分假日，調查隨時都可能到期）
             try:
-                from survey import check_expired_surveys, format_survey_result
+                from survey import check_expired_surveys, format_survey_result,get_survey_creator
                 for sid in check_expired_surveys():
                     if MY_SLACK_USER_ID:
                         result = format_survey_result(sid)
-                        slack_app.client.chat_postMessage(
-                            channel=MY_SLACK_USER_ID,
-                            text=f"⏰ 調查截止了！\n\n{result}",
-                        )
+                        creator = get_survey_creator(sid)
+                        if creator:
+                            slack_app.client.chat_postMessage(
+                                channel=creator,
+                                text=f"⏰ 調查截止了！\n\n{result}",
+                            )
                         logger.info(f"調查 #{sid} 已截止，已發送彙整")
             except Exception as e:
                 logger.error(f"檢查調查失敗: {e}")
