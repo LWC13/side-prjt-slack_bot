@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from config import OPENAI_MODEL, logger
-from db import get_stats, clear_chat_history
+from db import get_stats, clear_chat_history, list_user_memories
 from llm import chat_with_llm
 
 # ============================================================
@@ -65,6 +65,12 @@ def cmd_status(event, say, args, **kwargs):
 def cmd_clear(event, say, args, **kwargs):
     clear_chat_history()
     say("🗑️ 已清除所有對話記憶，重新開始！")
+
+
+@command("/memories", "🧠 查看 Bot 記住了什麼")
+def cmd_memories(event, say, args, **kwargs):
+    user_id = event.get("user", "")
+    say(list_user_memories(user_id))
 
 
 @command("/help", "📖 顯示可用指令")

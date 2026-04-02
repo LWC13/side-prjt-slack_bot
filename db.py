@@ -213,6 +213,89 @@ def clear_chat_history():
     conn.close()
 
 
+# ============================================================
+# 記憶（Memory Skill）
+# ============================================================
+
+def init_memory_db():
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS memories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            content TEXT NOT NULL,
+            category TEXT DEFAULT 'general',
+            created_at TEXT DEFAULT (datetime('now', 'localtime')),
+            updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+
+def save_memory(user_id, content, category="general"):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO memories (user_id, content, category) VALUES (?, ?, ?)",
+        (user_id, content, category),
+    )
+    mid = c.lastrowid
+    conn.commit()
+    conn.close()
+    return f"🧠 已記住 #{mid}：{content}"
+
+
+def get_user_memories(user_id):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        "SELECT id, content, category FROM memories WHERE user_id=? ORDER BY updated_at DESC",
+        (user_id,),
+    )
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+
+def update_memory(memory_id, content):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        "UPDATE memories SET content=?, updated_at=datetime('now','localtime') WHERE id=?",
+        (content, memory_id),
+    )
+    if c.rowcount == 0:
+        conn.close()
+        return f"❌ 找不到記憶 #{memory_id}"
+    conn.commit()
+    conn.close()
+    return f"🧠 已更新記憶 #{memory_id}：{content}"
+
+
+def delete_memory(memory_id):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("DELETE FROM memories WHERE id=?", (memory_id,))
+    if c.rowcount == 0:
+        conn.close()
+        return f"❌ 找不到記憶 #{memory_id}"
+    conn.commit()
+    conn.close()
+    return f"🗑️ 已刪除記憶 #{memory_id}"
+
+
+def list_user_memories(user_id):
+    rows = get_user_memories(user_id)
+    if not rows:
+        return "🧠 目前沒有記住任何關於你的事。"
+    lines = ["🧠 *關於你的記憶*\n"]
+    for mid, content, category in rows:
+        lines.append(f"• `#{mid}` [{category}] {content}")
+    return "\n".join(lines)
+
+
 def get_stats():
     conn = get_db()
     c = conn.cursor()
