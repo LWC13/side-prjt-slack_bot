@@ -4,13 +4,14 @@ Slack Agent Bot - 個人 AI 助理
 """
 
 import re
+from functools import partial
 from threading import Thread
 
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 from config import SLACK_BOT_TOKEN, SLACK_APP_TOKEN, IMAGE_MIME_TYPES, logger
-from db import init_db
+from db import init_db, init_memory_db
 from llm import chat_with_llm, set_slack_app
 from commands import COMMANDS
 from scheduler import background_scheduler
@@ -52,8 +53,15 @@ def handle_image_files(event, say, user_text=""):
 # 訊息處理
 # ============================================================
 
+def _thread_say(say, event):
+    """包裝 say，自動帶上 thread_ts 以在對話串回覆"""
+    thread_ts = event.get("thread_ts") or event.get("ts")
+    return partial(say, thread_ts=thread_ts)
+
+
 def process_message(event, say):
     """統一處理訊息的核心邏輯（@mention 和 DM 共用）"""
+    say = _thread_say(say, event)
     text = event.get("text", "")
 
     # 只移除 Bot 自己的 @mention，保留其他人的（給 create_survey 用）
@@ -92,8 +100,18 @@ def process_message(event, say):
         say("嗨！有什麼我可以幫你的嗎？打 `/help` 看可用指令 😊")
         return
 
-    # 4. 一般文字 → LLM 對話
-    say(chat_with_llm(text, user_id=event.get("user")))
+    # 4. 一般文字 → LLM 對話（先顯示思考中，完成後更新）
+    thinking_msg = say("我想一下ㄛ")
+    reply = chat_with_llm(text, user_id=event.get("user"))
+    try:
+        app.client.chat_update(
+            channel=thinking_msg["channel"],
+            ts=thinking_msg["ts"],
+            text=reply,
+        )
+    except Exception as e:
+        logger.error(f"更新訊息失敗: {e}")
+        say(reply)
 
 
 @app.event("app_mention")
@@ -115,7 +133,7 @@ def handle_dm(event, say):
     if text and user_id:
         survey_id, title = record_response(user_id, text)
         if survey_id:
-            say(f"收到你的回覆了，謝啦 👍")
+            say(f"收到你的回覆了，謝啦 👍", thread_ts=event.get("thread_ts") or event.get("ts"))
             logger.info(f"調查 #{survey_id} 收到 {user_id} 的回覆")
 
             # 檢查是否所有人都回覆了
@@ -143,6 +161,7 @@ def handle_dm(event, say):
 
 def main():
     init_db()
+    init_memory_db()
     init_survey_db()
     logger.info("資料庫初始化完成")
     logger.info(f"已註冊 {len(COMMANDS)} 個指令：{', '.join(COMMANDS.keys())}")
