@@ -125,17 +125,18 @@ SYSTEM_PROMPT = """你是 Nico 的 AI 分身，住在 Slack 裡面。Nico 是一
 """
 
 TOOLS = [
-    {"type": "function", "function": {"name": "add_todo", "description": "新增一個待辦事項。當用戶要你記住某件事、或提到待辦事項時使用。", "parameters": {"type": "object", "properties": {"content": {"type": "string", "description": "待辦事項內容"}, "due_date": {"type": "string", "description": "期限，格式 YYYY-MM-DD，可以為空"}}, "required": ["content"]}}},
-    {"type": "function", "function": {"name": "list_todos", "description": "列出目前的待辦事項。當用戶問有什麼待辦、任務、或想看清單時使用。", "parameters": {"type": "object", "properties": {"include_completed": {"type": "boolean", "description": "是否包含已完成的項目", "default": False}}}}},
-    {"type": "function", "function": {"name": "complete_todo", "description": "將一個待辦事項標記為完成。", "parameters": {"type": "object", "properties": {"todo_id": {"type": "integer", "description": "待辦事項的 ID 編號"}}, "required": ["todo_id"]}}},
-    {"type": "function", "function": {"name": "delete_todo", "description": "刪除一個待辦事項。", "parameters": {"type": "object", "properties": {"todo_id": {"type": "integer", "description": "待辦事項的 ID 編號"}}, "required": ["todo_id"]}}},
-    {"type": "function", "function": {"name": "add_reminder", "description": "設定一個定時提醒。支援一次性或重複提醒。", "parameters": {"type": "object", "properties": {"content": {"type": "string", "description": "提醒內容"}, "remind_at": {"type": "string", "description": "第一次提醒時間，格式 YYYY-MM-DD HH:MM"}, "repeat": {"type": "string", "enum": ["none", "daily", "weekly", "monthly"], "description": "重複頻率：none=一次性, daily=每天, weekly=每週, monthly=每月", "default": "none"}}, "required": ["content", "remind_at"]}}},
-    {"type": "function", "function": {"name": "list_reminders", "description": "列出目前待提醒的事項。", "parameters": {"type": "object", "properties": {}}}},
-    {"type": "function", "function": {"name": "add_todo_with_reminder", "description": "同時新增待辦事項並設定提醒。當用戶想記錄一件事並且希望到時候被提醒時使用。", "parameters": {"type": "object", "properties": {"content": {"type": "string", "description": "待辦事項內容"}, "due_date": {"type": "string", "description": "期限，格式 YYYY-MM-DD"}, "remind_at": {"type": "string", "description": "提醒時間，格式 YYYY-MM-DD HH:MM"}}, "required": ["content", "due_date", "remind_at"]}}},
-    {"type": "function", "function": {"name": "create_survey", "description": "發起調查，私訊多人收集資訊。用於約會議時間、收集意見、投票等場景。Bot 會私訊每個人問問題，收到回覆後自動彙整。", "parameters": {"type": "object", "properties": {"question": {"type": "string", "description": "要問的問題，例如「明天下午什麼時間可以開會？」"}, "user_ids": {"type": "array", "items": {"type": "string"}, "description": "要問的人的 Slack User ID 列表，格式如 ['U01ABC', 'U02DEF']"}, "deadline_minutes": {"type": "integer", "description": "截止時間（幾分鐘後），預設 60", "default": 60}}, "required": ["question", "user_ids"]}}},
-    {"type": "function", "function": {"name": "save_memory", "description": "儲存一條關於用戶的長期記憶。當用戶提到個人偏好、重要事實、工作資訊、長期規則時自動使用。", "parameters": {"type": "object", "properties": {"content": {"type": "string", "description": "要記住的內容"}, "category": {"type": "string", "enum": ["preference", "fact", "work", "rule"], "description": "分類：preference=偏好, fact=事實, work=工作, rule=長期規則", "default": "general"}}, "required": ["content"]}}},
-    {"type": "function", "function": {"name": "update_memory", "description": "更新一條已存在的記憶內容。當用戶糾正或更新之前記住的資訊時使用。", "parameters": {"type": "object", "properties": {"memory_id": {"type": "integer", "description": "記憶的 ID 編號"}, "content": {"type": "string", "description": "更新後的內容"}}, "required": ["memory_id", "content"]}}},
-    {"type": "function", "function": {"name": "delete_memory", "description": "刪除一條記憶。當用戶要求忘掉某件事時使用。", "parameters": {"type": "object", "properties": {"memory_id": {"type": "integer", "description": "記憶的 ID 編號"}}, "required": ["memory_id"]}}},
+    {"type": "web_search_preview"},
+    {"type": "function", "name": "add_todo", "description": "新增一個待辦事項。當用戶要你記住某件事、或提到待辦事項時使用。", "parameters": {"type": "object", "properties": {"content": {"type": "string", "description": "待辦事項內容"}, "due_date": {"type": "string", "description": "期限，格式 YYYY-MM-DD，可以為空"}}, "required": ["content"]}},
+    {"type": "function", "name": "list_todos", "description": "列出目前的待辦事項。當用戶問有什麼待辦、任務、或想看清單時使用。", "parameters": {"type": "object", "properties": {"include_completed": {"type": "boolean", "description": "是否包含已完成的項目", "default": False}}}},
+    {"type": "function", "name": "complete_todo", "description": "將一個待辦事項標記為完成。", "parameters": {"type": "object", "properties": {"todo_id": {"type": "integer", "description": "待辦事項的 ID 編號"}}, "required": ["todo_id"]}},
+    {"type": "function", "name": "delete_todo", "description": "刪除一個待辦事項。", "parameters": {"type": "object", "properties": {"todo_id": {"type": "integer", "description": "待辦事項的 ID 編號"}}, "required": ["todo_id"]}},
+    {"type": "function", "name": "add_reminder", "description": "設定一個定時提醒。支援一次性或重複提醒。", "parameters": {"type": "object", "properties": {"content": {"type": "string", "description": "提醒內容"}, "remind_at": {"type": "string", "description": "第一次提醒時間，格式 YYYY-MM-DD HH:MM"}, "repeat": {"type": "string", "enum": ["none", "daily", "weekly", "monthly"], "description": "重複頻率：none=一次性, daily=每天, weekly=每週, monthly=每月", "default": "none"}}, "required": ["content", "remind_at"]}},
+    {"type": "function", "name": "list_reminders", "description": "列出目前待提醒的事項。", "parameters": {"type": "object", "properties": {}}},
+    {"type": "function", "name": "add_todo_with_reminder", "description": "同時新增待辦事項並設定提醒。當用戶想記錄一件事並且希望到時候被提醒時使用。", "parameters": {"type": "object", "properties": {"content": {"type": "string", "description": "待辦事項內容"}, "due_date": {"type": "string", "description": "期限，格式 YYYY-MM-DD"}, "remind_at": {"type": "string", "description": "提醒時間，格式 YYYY-MM-DD HH:MM"}}, "required": ["content", "due_date", "remind_at"]}},
+    {"type": "function", "name": "create_survey", "description": "發起調查，私訊多人收集資訊。用於約會議時間、收集意見、投票等場景。Bot 會私訊每個人問問題，收到回覆後自動彙整。", "parameters": {"type": "object", "properties": {"question": {"type": "string", "description": "要問的問題，例如「明天下午什麼時間可以開會？」"}, "user_ids": {"type": "array", "items": {"type": "string"}, "description": "要問的人的 Slack User ID 列表，格式如 ['U01ABC', 'U02DEF']"}, "deadline_minutes": {"type": "integer", "description": "截止時間（幾分鐘後），預設 60", "default": 60}}, "required": ["question", "user_ids"]}},
+    {"type": "function", "name": "save_memory", "description": "儲存一條關於用戶的長期記憶。當用戶提到個人偏好、重要事實、工作資訊、長期規則時自動使用。", "parameters": {"type": "object", "properties": {"content": {"type": "string", "description": "要記住的內容"}, "category": {"type": "string", "enum": ["preference", "fact", "work", "rule"], "description": "分類：preference=偏好, fact=事實, work=工作, rule=長期規則", "default": "general"}}, "required": ["content"]}},
+    {"type": "function", "name": "update_memory", "description": "更新一條已存在的記憶內容。當用戶糾正或更新之前記住的資訊時使用。", "parameters": {"type": "object", "properties": {"memory_id": {"type": "integer", "description": "記憶的 ID 編號"}, "content": {"type": "string", "description": "更新後的內容"}}, "required": ["memory_id", "content"]}},
+    {"type": "function", "name": "delete_memory", "description": "刪除一條記憶。當用戶要求忘掉某件事時使用。", "parameters": {"type": "object", "properties": {"memory_id": {"type": "integer", "description": "記憶的 ID 編號"}}, "required": ["memory_id"]}},
 ]
 
 # Slack app reference，由 app.py 設定
@@ -239,25 +240,49 @@ def chat_with_llm(user_message, user_id=None):
     else:
         role_context = "（目前跟你對話的是其他同事，你要表現得像 Nico 本人在講話，用 Nico 的語氣和習慣回覆）"
 
-    messages = [{"role": "system", "content": f"{SYSTEM_PROMPT}{memory_block}\n\n現在時間：{today}\n{role_context}"}] + history + [{"role": "user", "content": user_message}]
+    instructions = f"{SYSTEM_PROMPT}{memory_block}\n\n現在時間：{today}\n{role_context}"
+    input_messages = history + [{"role": "user", "content": user_message}]
 
     try:
         tool_functions = _build_tool_functions(user_id)
-        response = client.chat.completions.create(model=OPENAI_MODEL, max_tokens=1024, tools=TOOLS, messages=messages)
-        message = response.choices[0].message
+        response = client.responses.create(
+            model=OPENAI_MODEL,
+            instructions=instructions,
+            input=input_messages,
+            tools=TOOLS,
+            max_output_tokens=1024,
+        )
 
-        while message.tool_calls:
-            messages.append(message)
-            for tc in message.tool_calls:
-                name = tc.function.name
-                args = json.loads(tc.function.arguments)
-                logger.info(f"Tool call: {name}({args})")
-                result = tool_functions.get(name, lambda _: f"未知工具：{name}")(args)
-                messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
-            response = client.chat.completions.create(model=OPENAI_MODEL, max_tokens=1024, tools=TOOLS, messages=messages)
-            message = response.choices[0].message
+        # 處理 function call loop
+        while any(item.type == "function_call" for item in response.output):
+            for item in response.output:
+                if item.type == "function_call":
+                    args = json.loads(item.arguments)
+                    logger.info(f"Tool call: {item.name}({args})")
+                    result = tool_functions.get(item.name, lambda _: f"未知工具：{item.name}")(args)
+                    input_messages.append(item)
+                    input_messages.append({
+                        "type": "function_call_output",
+                        "call_id": item.call_id,
+                        "output": result,
+                    })
+            response = client.responses.create(
+                model=OPENAI_MODEL,
+                instructions=instructions,
+                input=input_messages,
+                tools=TOOLS,
+                max_output_tokens=1024,
+            )
 
-        reply = message.content or ""
+        # 從 response.output 取出文字回覆
+        reply = ""
+        for item in response.output:
+            if item.type == "message":
+                for content in item.content:
+                    if content.type == "output_text":
+                        reply += content.text
+
+        reply = reply or ""
         save_chat("user", user_message)
         save_chat("assistant", reply)
         return reply
