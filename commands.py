@@ -73,6 +73,37 @@ def cmd_memories(event, say, args, **kwargs):
     say(list_user_memories(user_id))
 
 
+@command("/wishlist", "🛒 好物清單（附圖辨識新增，無圖看清單）", needs_image=True)
+def cmd_wishlist(event, say, args, handle_image_files=None, **kwargs):
+    from config import SLACK_BOT_TOKEN, IMAGE_MIME_TYPES
+    from vision import download_slack_file
+    from wishlist import wishlist_recognize_and_add, wishlist_list_items
+
+    files = event.get("files", [])
+    image_files = [f for f in files if f.get("mimetype", "") in IMAGE_MIME_TYPES]
+
+    if not image_files:
+        # 有文字就讓 LLM 判斷篩選條件，沒文字就顯示全部
+        if args.strip():
+            say(chat_with_llm(f"查看好物清單：{args}", user_id=event.get("user")))
+        else:
+            say(wishlist_list_items())
+        return
+
+    for f in image_files:
+        file_url = f.get("url_private", "")
+        if not file_url:
+            continue
+        try:
+            image_bytes, mime_type = download_slack_file(file_url, SLACK_BOT_TOKEN)
+            filename = f.get("name", "image.jpg")
+            result = wishlist_recognize_and_add(image_bytes, filename)
+            say(result)
+        except Exception as e:
+            logger.error(f"Wishlist 辨識失敗: {e}")
+            say(f"⚠️ 處理失敗：{str(e)}")
+
+
 @command("/help", "📖 顯示可用指令")
 def cmd_help(event, say, args, **kwargs):
     lines = ["📖 *可用指令*\n"]

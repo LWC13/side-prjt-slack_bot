@@ -3,6 +3,7 @@ services:
     build: .
     container_name: slack-agent-bot
     restart: unless-stopped
+    network_mode: host
     env_file:
       - .env
     environment:
@@ -20,3 +21,4 @@ services:
       - ./notion.py:/app/notion.py
       - ./vision.py:/app/vision.py
       - ./survey.py:/app/survey.py
+      - ./wishlist.py:/app/wishlist.py
